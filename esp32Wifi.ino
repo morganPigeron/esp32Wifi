@@ -12,12 +12,23 @@
 
 #include <HTTPClient.h>
 
+#include <SPI.h>
+#include "Led.h"
+
 #include "DHT.h"
 
 #define DHTPIN 4     // Digital pin connected to the DHT sensor
 #define DHTTYPE DHT11
 
 #define USE_SERIAL Serial
+
+#define NBRLED 100
+#define LEDAMP 40
+
+const uint8_t nullByte = 0;
+
+Led ledArray[NBRLED];
+
 
 WiFiMulti wifiMulti;
 
@@ -41,9 +52,14 @@ void setup() {
     wifiMulti.addAP("SFR_0800", "AlessiaMorgan1!");
 
     dht.begin();
+
+    SPI.begin();
+    initLedArray();
+
 }
 
 void loop() {
+    int i;
 
     float h = dht.readHumidity();
     float t = dht.readTemperature();
@@ -79,6 +95,116 @@ void loop() {
 
         http.end();
     }
+    redPatern();
+    sendStartFrame();
+    for(i=0; i<NBRLED; i++)
+    {
+        sendLedFrame(i);
+    }
+    sendEndFrame();
+    delay(500);
+
+    greenPatern();
+    sendStartFrame();
+    for(i=0; i<NBRLED; i++)
+    {
+        sendLedFrame(i);
+    }
+    sendEndFrame();
+    delay(500);
+
+    bluePatern();
+    sendStartFrame();
+    for(i=0; i<NBRLED; i++)
+    {
+        sendLedFrame(i);
+    }
+    sendEndFrame();
+    delay(500);
+
     
     delay(5000);
+}
+
+void sendStartFrame()
+{
+    SPI.transfer(nullByte);
+    SPI.transfer(nullByte);
+    SPI.transfer(nullByte);
+    SPI.transfer(nullByte);
+}
+
+void sendLedFrame(int id)
+{
+    SPI.transfer(ledArray[id].getBrightness());
+    SPI.transfer(ledArray[id].getBlue());
+    SPI.transfer(ledArray[id].getGreen());
+    SPI.transfer(ledArray[id].getRed());
+}
+
+void sendEndFrame()
+{
+    int i;
+    int nbr = (NBRLED-1)/16;
+
+    for(i=0; i<nbr; i++)
+    {
+        SPI.transfer(nullByte);
+    }
+    SPI.transfer(nullByte);
+}
+
+void initLedArray()
+{
+    int i;
+
+    for(i=0; i<NBRLED; i++)
+    {
+        ledArray[i].setId(i);
+    }
+}
+
+void setLed(int id, int r, int g, int b, int brightness)
+{
+    ledArray[id].settings(r,g,b,brightness);
+}
+
+void randomPatern()
+{
+    int i;
+
+    for(i=0; i<NBRLED; i++)
+    {
+        setLed(i,random(255),random(255),random(255),random(255));
+    }  
+}
+
+void redPatern()
+{
+    int i;
+
+    for(i=0; i<NBRLED; i++)
+    {
+        setLed(i, LEDAMP, 0, 0, LEDAMP);
+    }  
+}
+
+void bluePatern()
+{
+    int i;
+
+    for(i=0; i<NBRLED; i++)
+    {
+        setLed(i, 0, LEDAMP, 0, LEDAMP);
+    }  
+}
+
+void greenPatern()
+{
+    int i;
+
+    for(i=0; i<NBRLED; i++)
+    {
+        setLed(i, 0, 0, LEDAMP, LEDAMP);
+    }  
 }
